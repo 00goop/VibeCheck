@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, useInView } from 'framer-motion'
+import { motion, useInView, useReducedMotion } from 'framer-motion'
 import {
   Zap, Users, Sparkles, Target, MessageSquare,
   TrendingUp, Brain, Flame, TrendingDown, Lightbulb, Briefcase,
@@ -14,13 +14,14 @@ const fadeUpVariants = {
 }
 
 function AnimatedSection({ children, delay = 0 }) {
+  const reduceMotion=useReducedMotion()
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-100px' })
 
   return (
     <motion.div
       ref={ref}
-      initial="hidden"
+      initial={reduceMotion?false:"hidden"}
       animate={isInView ? 'visible' : 'hidden'}
       variants={fadeUpVariants}
       transition={{ duration: 0.6, delay }}
@@ -32,15 +33,19 @@ function AnimatedSection({ children, delay = 0 }) {
 
 export default function Landing() {
   const navigate = useNavigate()
+  const reduceMotion=useReducedMotion()
   const [glowPosition, setGlowPosition] = useState({ x: 0, y: 0 })
 
   useEffect(() => {
+    if(reduceMotion)return
+    let frame=0
     const handleMouseMove = (e) => {
-      setGlowPosition({ x: e.clientX, y: e.clientY })
+      cancelAnimationFrame(frame)
+      frame=requestAnimationFrame(()=>setGlowPosition({ x: e.clientX, y: e.clientY }))
     }
     window.addEventListener('mousemove', handleMouseMove)
-    return () => window.removeEventListener('mousemove', handleMouseMove)
-  }, [])
+    return () => {cancelAnimationFrame(frame);window.removeEventListener('mousemove', handleMouseMove)}
+  }, [reduceMotion])
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
@@ -116,7 +121,7 @@ export default function Landing() {
               See It In <span className="text-primary">Action</span>
             </h2>
             <p className="text-center text-muted-foreground text-lg mb-16">
-              Real screenshots from a live networking event
+              Screenshots from the original team project
             </p>
           </AnimatedSection>
 
@@ -244,9 +249,9 @@ export default function Landing() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
                 {[
                   { value: '0', label: 'Sign-ups Required' },
-                  { value: '<30s', label: 'To Drop Your Card' },
+                  { value: '1', label: 'Card Per Room' },
                   { value: '5', label: 'AI Personalities' },
-                  { value: '95%', label: 'Match Success' },
+                  { value: 'Need ↔ Offer', label: 'Complementary Matching' },
                 ].map((stat, i) => (
                   <div key={i}>
                     <div className="text-4xl md:text-5xl font-black text-primary mb-2">{stat.value}</div>
@@ -267,7 +272,7 @@ export default function Landing() {
               Ready to <span className="text-primary">Vibe?</span>
             </h2>
             <p className="text-xl text-muted-foreground mb-8">
-              Join thousands of people making real connections at events worldwide
+              Bring your project, find a complementary skill, and start a conversation.
             </p>
             <Button
               size="lg"

@@ -8,6 +8,7 @@ import { Avatar } from './Avatar'
 export function MatchModal({ match, onClose }) {
   const [displayed, setDisplayed] = useState('')
   const [responded, setResponded] = useState(false)
+  const [error,setError]=useState('')
 
   useEffect(() => {
     if (!match?.icebreaker) return
@@ -23,7 +24,8 @@ export function MatchModal({ match, onClose }) {
 
   const respond = async (status) => {
     setResponded(true)
-    await supabase.from('matches').update({ status }).eq('id', match.id)
+    const {data,error:failure}=await supabase.from('matches').update({ status }).eq('id', match.id).select('id')
+    if(failure||!data?.length){setError('Could not save your response. Try again.');setResponded(false);return}
     onClose()
   }
 
@@ -46,6 +48,7 @@ export function MatchModal({ match, onClose }) {
           </DialogTitle>
         </DialogHeader>
 
+        {error&&<p role="alert" className="text-red-400">{error}</p>}
         <div className="space-y-6">
           <div className="text-center flex flex-col items-center">
             <Avatar photoUrl={theirCard?.photo_url} emoji={theirCard?.emoji} size="xl" className="mb-4" />

@@ -20,7 +20,7 @@ export default function Room() {
   const navigate    = useNavigate()
   const myCardId    = safeGet('my_card_id')
 
-  const { cards, loading, connected } = useRoom(eventId)
+  const { cards, loading, connected, error:roomError } = useRoom(eventId)
 
   const [matchQueue,  setMatchQueue]  = useState([])
   const [targetCard,  setTargetCard]  = useState(null)
@@ -96,7 +96,7 @@ export default function Room() {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500 animate-pulse' : 'bg-yellow-400 animate-pulse'}`} />
-                <span className="text-sm text-muted-foreground">{connected ? 'Live' : 'Connecting...'}</span>
+                <span className="text-sm text-muted-foreground">{roomError?'Refresh delayed':connected ? 'Live' : 'Reconnecting...'}</span>
               </div>
               <div className="h-4 w-px bg-white/10" />
               <h2 className="font-bold flex items-center gap-2">

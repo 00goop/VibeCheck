@@ -1,13 +1,15 @@
+import {authHeaders} from '../lib/supabase'
 export async function streamIcebreaker(cardA, cardB, personality, onChunk, signal) {
   let fullText = ''
   try {
     const res = await fetch(`${import.meta.env.VITE_PROXY_URL}/icebreaker`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({ cardA, cardB, personality }),
       signal,
     })
 
+    if(!res.ok||!res.body)throw new Error('Icebreaker unavailable')
     const reader = res.body.getReader()
     const decoder = new TextDecoder()
     // Buffer incomplete lines across TCP chunk boundaries
@@ -34,7 +36,8 @@ export async function streamIcebreaker(cardA, cardB, personality, onChunk, signa
       }
     }
     return fullText || fallback(cardA, cardB)
-  } catch {
+  } catch(error) {
+    if(signal?.aborted)throw error
     return fallback(cardA, cardB)
   }
 }

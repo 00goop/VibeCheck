@@ -1,3 +1,4 @@
+import {csvCell,vcardText,resolveTheirCard} from '../lib/exports'
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Download } from 'lucide-react'
@@ -18,8 +19,7 @@ function triggerDownload(filename, content, type) {
 }
 
 function exportVCard(card) {
-  const vcf_escape = (s = '') =>
-    String(s).replace(/[\r\n]+/g, ' ').replace(/\\/g, '\\\\').replace(/,/g, '\\,').replace(/;/g, '\\;')
+  const vcf_escape=vcardText
 
   // Normalize linkedin to a username handle for the URL
   const linkedinHandle = card.linkedin
@@ -40,10 +40,7 @@ function exportVCard(card) {
 }
 
 function exportCSV(matches, myCardId) {
-  const sanitize = (val = '') => {
-    const s = String(val).replace(/"/g, '""')
-    return /^[=+\-@]/.test(s) ? `'${s}` : s
-  }
+  const sanitize=csvCell
   const header = 'Name,Project,Need,Offer,LinkedIn,Instagram,Icebreaker,Status'
   const rows = matches.map((match) => {
     const c = resolveTheirCard(match, myCardId)
@@ -55,11 +52,6 @@ function exportCSV(matches, myCardId) {
     return `"${sanitize(c?.name)}","${sanitize(c?.project)}","${sanitize(c?.need)}","${sanitize(c?.offer)}","${sanitize(linkedinUrl)}","${sanitize(instagramUrl)}","${sanitize(match.icebreaker)}","${sanitize(match.status)}"`
   })
   triggerDownload('vibecheck-matches.csv', [header, ...rows].join('\n'), 'text/csv')
-}
-
-function resolveTheirCard(match, myCardId) {
-  if (!myCardId) return match.card_b_snapshot ?? match.card_a_snapshot
-  return match.card_a === myCardId ? match.card_b_snapshot : match.card_a_snapshot
 }
 
 function getStatusColor(status) {
@@ -266,10 +258,10 @@ export default function Matches() {
         { event: 'INSERT', schema: 'public', table: 'matches', filter: `card_b=eq.${myCardId}` },
         handleInsert
       )
-      .subscribe()
+      .subscribe(status=>{if(status==='SUBSCRIBED')fetchMatches()})
 
     return () => supabase.removeChannel(channel)
-  }, [myCardId])
+  }, [myCardId,fetchMatches])
 
   const acceptedCount = matches.filter(m => m.status === 'accepted').length
   const pendingCount = matches.filter(m => m.status === 'pending').length

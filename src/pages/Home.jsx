@@ -15,7 +15,7 @@ import { Textarea } from '../components/ui/textarea'
 // ---------------------------------------------------------------------------
 
 function generateRoomCode() {
-  return Math.random().toString(36).padEnd(9, '0').slice(2, 8).toUpperCase()
+  return Array.from(crypto.getRandomValues(new Uint8Array(3)),x=>x.toString(16).padStart(2,'0')).join('').toUpperCase()
 }
 
 export async function createEvent(name, { discord_url, organizer_linkedin, description, extras } = {}) {
@@ -80,10 +80,10 @@ async function reclaimCard(code, pin, setError, navigate) {
     .from('vibe_cards')
     .select('id')
     .eq('event_id', event.id)
-    .eq('pin', pin)
+    .eq('owner_id', (await supabase.auth.getUser()).data.user?.id)
     .maybeSingle()
 
-  if (!card) return setError('No card found with that PIN.')
+  if (!card) return setError('No card belongs to this session in that room.')
 
   safeStore('my_card_id', card.id)
   safeStore('my_event_id', event.id)
@@ -164,7 +164,7 @@ export default function Home() {
 
   async function handleReclaim(e) {
     e.preventDefault()
-    if (!reclaimCode.trim() || !reclaimPin.trim()) { setError('Fill in both fields.'); return }
+    if (!reclaimCode.trim()) { setError('Enter the room code.'); return }
     clearError()
     setBusy(true)
     await reclaimCard(reclaimCode, reclaimPin, setError, navigate)
@@ -194,7 +194,7 @@ export default function Home() {
               </div>
             </div>
             <h1 className="text-3xl font-black mb-2">Welcome to VibeCheck</h1>
-            <p className="text-muted-foreground">Join a room, create one, or reclaim your card</p>
+            <p className="text-muted-foreground">Join a room, create one, or return to your card</p>
           </div>
 
           {/* Error */}
@@ -223,7 +223,7 @@ export default function Home() {
                 value="reclaim"
                 className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold"
               >
-                Reclaim
+                Return
               </TabsTrigger>
             </TabsList>
 
@@ -371,27 +371,13 @@ export default function Home() {
                     autoFocus
                   />
                 </div>
-                <div>
-                  <Label htmlFor="reclaimPin">4-Digit PIN</Label>
-                  <Input
-                    id="reclaimPin"
-                    type="password"
-                    placeholder="****"
-                    value={reclaimPin}
-                    onChange={(e) => { setReclaimPin(e.target.value.replace(/\D/g, '').slice(0, 4)); clearError() }}
-                    maxLength={4}
-                    className="mt-2 bg-white/5 border-white/10 rounded-2xl text-lg font-mono tracking-wider"
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Use this if you switched browsers or cleared your session.
-                  </p>
-                </div>
+                <p className="text-sm text-muted-foreground">Restore your card from this browser’s session. Clearing browser data or switching devices requires a new card.</p>
                 <Button
                   type="submit"
                   disabled={busy}
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-2xl py-6"
                 >
-                  {busy ? 'Looking up...' : 'Reclaim Card'}
+                  {busy ? 'Looking up...' : 'Return to Card'}
                 </Button>
               </form>
             </TabsContent>

@@ -29,7 +29,6 @@ export function VibeCardForm({ onSubmit, initial = {}, submitting = false, event
   const [form, setForm] = useState({
     name:                   initial.name                   ?? '',
     emoji:                  initial.emoji                  ?? '👋',
-    pin:                    initial.pin                    ?? '',
     project:                initial.project                ?? '',
     need:                   initial.need                   ?? '',
     offer:                  initial.offer                  ?? '',
@@ -52,7 +51,7 @@ export function VibeCardForm({ onSubmit, initial = {}, submitting = false, event
   async function handleFileUpload(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) return
+    if (!['image/jpeg','image/png','image/webp'].includes(file.type)) {setErrors(prev=>({...prev,photo:'Use a JPEG, PNG or WebP image'}));return}
     if (file.size > 5 * 1024 * 1024) {
       setErrors(prev => ({ ...prev, photo: 'Photo must be under 5MB' }))
       return
@@ -60,11 +59,13 @@ export function VibeCardForm({ onSubmit, initial = {}, submitting = false, event
     setUploading(true)
     setErrors(prev => ({ ...prev, photo: undefined }))
     try {
-      const ext = file.name.split('.').pop()
-      const path = `avatars/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const ext = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type]
+      const {data:{user}}=await supabase.auth.getUser()
+      if(!user)throw Error('Session required')
+      const path = `${user.id}/${crypto.randomUUID()}.${ext}`
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
-        .upload(path, file, { contentType: file.type, upsert: true })
+        .upload(path, file, { contentType: file.type, upsert: false })
       if (uploadErr) throw uploadErr
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
       set('photo_url', publicUrl)
@@ -102,7 +103,6 @@ export function VibeCardForm({ onSubmit, initial = {}, submitting = false, event
   function validate() {
     const e = {}
     if (!form.name.trim())             e.name    = 'Name is required'
-    if (!/^\d{4}$/.test(form.pin))     e.pin     = 'Must be exactly 4 digits'
     if (!form.project.trim())          e.project = 'What are you working on?'
     if (form.need.trim().length < 10)  e.need    = `${10 - form.need.trim().length} more chars needed`
     if (form.offer.trim().length < 10) e.offer   = `${10 - form.offer.trim().length} more chars needed`
@@ -119,7 +119,6 @@ export function VibeCardForm({ onSubmit, initial = {}, submitting = false, event
     onSubmit({
       name:                   form.name.trim(),
       emoji:                  form.emoji,
-      pin:                    form.pin,
       project:                form.project.trim(),
       need:                   form.need.trim(),
       offer:                  form.offer.trim(),
@@ -282,21 +281,7 @@ export function VibeCardForm({ onSubmit, initial = {}, submitting = false, event
             )}
           </div>
 
-          {/* PIN */}
-          <div>
-            <Label htmlFor="pin">4-Digit PIN (to reclaim your card later)</Label>
-            <Input
-              id="pin"
-              type="password"
-              inputMode="numeric"
-              placeholder="****"
-              value={form.pin}
-              onChange={(e) => set('pin', e.target.value.replace(/\D/g, '').slice(0, 4))}
-              maxLength={4}
-              className="mt-2 bg-white/5 border-white/10 rounded-2xl font-mono text-lg tracking-wider"
-            />
-            {errors.pin && <p className="text-destructive text-sm mt-2">{errors.pin}</p>}
-          </div>
+          <p className="text-sm text-muted-foreground">Your card belongs to this browser session. Keep your browser data to edit it later.</p>
 
           {/* Project Description */}
           <div>

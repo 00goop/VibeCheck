@@ -8,52 +8,6 @@ import { VibeCardForm } from '../components/VibeCardForm'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 
-// ---------------------------------------------------------------------------
-// PIN gate — shown in edit mode before the form
-// ---------------------------------------------------------------------------
-function PinGate({ card, onVerified }) {
-  const [pin, setPin]     = useState('')
-  const [error, setError] = useState(null)
-
-  function verify(e) {
-    e.preventDefault()
-    if (pin === card.pin) {
-      onVerified()
-    } else {
-      setError('Wrong PIN. Try again.')
-      setPin('')
-    }
-  }
-
-  return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4 backdrop-blur text-center">
-      <p className="text-white font-semibold">Enter your PIN to edit your card</p>
-      <form onSubmit={verify} className="space-y-3">
-        <Input
-          autoFocus
-          type="password"
-          inputMode="numeric"
-          maxLength={4}
-          value={pin}
-          onChange={e => { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)); setError(null) }}
-          placeholder="****"
-          className="bg-white/5 border-white/10 rounded-2xl text-center text-lg tracking-widest"
-        />
-        {error && <p className="text-xs text-red-400">{error}</p>}
-        <Button
-          type="submit"
-          className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-2xl py-6"
-        >
-          Unlock
-        </Button>
-      </form>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
 export default function CreateCard() {
   const { eventId }  = useParams()
   const location     = useLocation()
@@ -65,7 +19,7 @@ export default function CreateCard() {
   const [error, setError]                     = useState(null)
   const [existingCard, setExistingCard]       = useState(null)
   const [loading, setLoading]                 = useState(isEditMode)
-  const [pinVerified, setPinVerified]         = useState(false)
+  const [sessionVerified, setSessionVerified]         = useState(false)
   const [eventDescription, setEventDescription] = useState(null)
 
   // Fetch event description to show context before the form
@@ -93,6 +47,7 @@ export default function CreateCard() {
       .single()
       .then(({ data, error: err }) => {
         if (err || !data) { navigate(`/room/${eventId}`); return }
+        supabase.auth.getUser().then(({data:{user}})=>{ if(data.owner_id!==user?.id)navigate(`/room/${eventId}`); else setSessionVerified(true) })
         setExistingCard(data)
         setLoading(false)
       })
@@ -209,11 +164,7 @@ export default function CreateCard() {
           </div>
         )}
 
-        {isEditMode && !loading && existingCard && !pinVerified && (
-          <PinGate card={existingCard} onVerified={() => setPinVerified(true)} />
-        )}
-
-        {(!isEditMode || (existingCard && pinVerified)) && (
+        {(!isEditMode || (existingCard && sessionVerified)) && (
           <VibeCardForm
             onSubmit={isEditMode ? handleEdit : handleCreate}
             initial={existingCard ?? {}}

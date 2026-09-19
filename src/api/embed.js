@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase'
+import { supabase, authHeaders } from '../lib/supabase'
 
 export async function embedCard(card, { isRetry = false } = {}) {
   try {
@@ -19,10 +19,11 @@ export async function embedCard(card, { isRetry = false } = {}) {
       fetchEmbedding(card.offer + rolesSuffix),
     ])
 
-    await supabase
+    const {error:saveError}=await supabase
       .from('vibe_cards')
       .update({ need_embedding: needVec, offer_embedding: offerVec })
       .eq('id', card.id)
+    if(saveError)throw saveError
 
     if (isRetry) {
       await supabase.from('failed_embeds').delete().eq('card_id', card.id)
@@ -38,11 +39,12 @@ export async function embedCard(card, { isRetry = false } = {}) {
 async function fetchEmbedding(text) {
   const res = await fetch(`${import.meta.env.VITE_PROXY_URL}/embed`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await authHeaders(),
     body: JSON.stringify({ text }),
     signal: AbortSignal.timeout(10_000),
   })
   if (!res.ok) throw new Error('Embed failed')
   const { embedding } = await res.json()
+  if(!Array.isArray(embedding)||embedding.length!==768||!embedding.every(Number.isFinite))throw new Error('Invalid embedding')
   return embedding
 }

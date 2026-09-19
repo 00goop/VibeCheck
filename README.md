@@ -1,141 +1,71 @@
-🚀 VibeCheck
+# VibeCheck
 
-Real-time hackathon networking, reimagined.
-Drop a vibe. Get matched. Let AI break the ice.
+Find the person whose offer complements your need. Create a networking card,
+join an event, send an AI-assisted introduction and keep the connections you accept.
+The original dark/yellow event identity, complementary matching and team credit
+are preserved in this portfolio fork of [vinhbin/VibeCheck](https://github.com/vinhbin/VibeCheck).
 
-VibeCheck helps builders find the right people fast—whether that’s a teammate, mentor, or future co-founder—by matching complementary needs and generating personalized icebreakers.
+## Local setup
 
-✨ Overview
+Use Node 22.18+. Run `npm ci`, copy `.env.example` to `.env`, and copy
+`server.env.example` to `server.env`. Fill in the Supabase URL/public anon key
+in both files, the proxy URL in `.env`, and Gemini key only in `server.env`.
+Run `npm run dev` and `npm run proxy` in separate terminals. Match ALLOWED_ORIGIN
+to the frontend port printed by Vite. `server.js` is the canonical proxy;
+`server.py` is historical and does not implement the new session boundary.
 
-At fast-paced events like hackathons, meaningful connections are rare and time is limited.
+On a **new Supabase project**, run `supabase/functions.sql`, then migrations
+001 through 004 in order. Enable anonymous sign-ins in Supabase Auth. These
+are authenticated, device-persisted sessions with owner IDs, not public anon-key
+write access. Enable Realtime for `vibe_cards`, `matches` and `events`.
 
-VibeCheck solves that by:
+On an **existing project**, back up first and review migration 004 separately.
+Previously public PINs cannot establish identity. Existing records remain unowned
+until an administrator verifies and maps ownership; clearing browser data does
+not recover ownership. The migration removes PINs and invalidates incompatible
+3072-dimensional derived embeddings for regeneration. It does not delete cards.
+No migration or service deployment was performed by this portfolio branch.
 
-Matching people based on what they need and offer
-Removing awkward intros with AI-generated openers
-Turning networking into a fast, intentional, and even fun experience
-🔥 Core Features
-1. Join the Room
-Create or enter an event using a 6-character code or QR scan
-Instantly connect to a live networking pool
-2. Drop Your Vibe Card
-Share:
-What you’re building
-What you need
-What you offer
-Your card becomes your “signal” in the room
-3. Smart Matching
-Powered by pgvector semantic search
-Ranks people based on complementary intent, not just similarity
-4. Shoot Your Shot
-Pick a vibe:
-🔥 Hype
-😈 Roast
-🧠 Philosopher
-💼 Investor
-AI generates a personalized icebreaker message
-5. Connect or Pass
-Review before sending
-Accept or decline incoming matches
-Export connections (vCard / CSV)
-🧠 Tech Stack
-Layer	Tech
-Frontend	React 18, Vite, React Router v6, Tailwind CSS, Framer Motion
-Backend / DB	Supabase (Postgres, pgvector, Realtime)
-AI — Icebreakers	Gemini 2.5 Flash (streamed via proxy)
-AI — Embeddings	Gemini Embedding 001 (768-dim vectors)
-QR Codes	qrcode.react
-Hosting	Vercel (frontend), Railway (proxy)
-⚡ Quick Start
-Prerequisites
-Node.js 18+
-(Optional) Python 3.11+ for FastAPI proxy
-1. Install Dependencies
-npm install
-2. Environment Setup
+Optional avatar uploads require an `avatars` bucket with a 5 MB limit and only
+JPEG, PNG and WebP MIME types. Restrict writes to authenticated users whose ID is
+the first path folder; remove any older public write policies before enabling
+uploads. Uploaded photos are public profile media. Emoji/URL avatars work without
+storage provisioning. Storage policies are deployment-specific and not tested here.
 
-Create a .env file:
+## Mechanisms and boundaries
 
-VITE_SUPABASE_URL=<your-supabase-url>
-VITE_SUPABASE_ANON_KEY=<your-anon-key>
-VITE_PROXY_URL=http://localhost:3001
+- React 18, React Router, Vite and Tailwind; room/editor routes load on demand.
+- Supabase PostgreSQL + pgvector stores 768-dimensional need/offer vectors.
+  Need queries compare against other attendees' offers, not generic similarity.
+- SQL policies restrict mutations to record owners; match reads to participants.
+  Only the recipient can move pending → accepted/declined. Server-generated
+  snapshots prevent forged contact data; accepted/declined records cannot be reset.
+- Cards and event descriptions are networking profiles visible to signed-in
+  attendees. Event codes are discovery links, **not private-room authorization**.
+- Express validates Supabase access tokens before bounded Gemini requests, with
+  IP rate limiting, abort timeouts and dimension checks. No private prompt logs.
+- SSE icebreakers retain a local fallback if AI is unavailable; embedding failures
+  remain failures. Exported CSV protects formula cells; vCards escape properties.
+- Realtime changes and reconnects refresh room data; a 30-second recovery refresh
+  handles missed deletes. Save errors remain actionable instead of showing success.
 
-Create server.env:
+## Verify
 
-GEMINI_API_KEY=<your-gemini-key>
-ALLOWED_ORIGIN=http://localhost:5173
-PORT=3001
-3. Run the App
+```sh
+npm test
+npm run build
+npm audit --audit-level=high
+```
 
-Frontend
+Tests run SQL migrations and ownership/matching/capacity checks in PGlite with
+pgvector, plus proxy validation and export cases. No Gemini or live Supabase calls
+are made. PGlite does not validate hosted Supabase Auth, Realtime or Storage
+configuration; validate those integrations in staging before deploying.
 
-npm run dev
+## Contribution context
 
-Proxy Server
-
-npm run proxy
-
-App runs at:
-👉 http://localhost:5173
-
-🗄️ Supabase Setup
-Create a project on Supabase
-Run supabase/functions.sql in the SQL Editor
-Enable Realtime on:
-vibe_cards
-matches
-📁 Project Structure
-src/
-  pages/
-    Home.jsx
-    CreateCard.jsx
-    Room.jsx
-    Matches.jsx
-  components/
-    VibeCard.jsx
-    VibeCardForm.jsx
-    ShootYourShot.jsx
-    MatchFeed.jsx
-    SuggestedFeed.jsx
-    EnergyFilter.jsx
-    RoomQR.jsx
-    CardSkeleton.jsx
-    ErrorBoundary.jsx
-  api/
-    gemini.js
-    embed.js
-  hooks/
-    useRoom.js
-    useMatches.js
-    useSuggested.js
-  lib/
-    supabase.js
-    storage.js
-
-server.js        # Express proxy
-server.py        # FastAPI alternative
-supabase/
-  functions.sql
-🛠️ Scripts
-Command	Description
-npm run dev	Start frontend
-npm run proxy	Start backend proxy
-npm run proxy:dev	Proxy with hot reload
-npm run build	Production build
-npm run preview	Preview build
-👥 Team
-
-Built by a team of 4 during a hackathon, with parallel feature development:
-
-feat/home-ui — Event entry + onboarding
-feat/card-form — Card creation & editing
-feat/room-ui — Live room + matching
-feat/matches-ui — Connections + exports
-📌 Why It Stands Out
-Intent-based matching > random networking
-AI removes friction from first contact
-Real-time + lightweight = perfect for hackathons
-Built with production-grade tools (Supabase, vector search, streaming AI)
-📄 License
-
-MIT
+Team project at HackLanta 2026. The supplied resume attributes cards, matches and
+room UI to Guttu. This later fork modernization is separately documented and does
+not reassign the original team's work. Existing screenshots under
+`public/screenshots` represent the original app, not verification of a deployment
+of this branch. See [CODEX_PLAN.md](CODEX_PLAN.md).

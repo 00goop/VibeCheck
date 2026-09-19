@@ -48,13 +48,13 @@ export function ShootYourShot({ myCard, targetCard, onClose }) {
         .eq('card_b', hi)
         .maybeSingle()
 
-      if (existing?.status === 'accepted') {
+      if (existing) {
         // Already matched — no need to send again
         setDone(true)
         return
       }
 
-      await supabase.from('matches').upsert(
+      const {error:saveError}=await supabase.from('matches').insert(
         {
           card_a: lo,
           card_b: hi,
@@ -63,10 +63,12 @@ export function ShootYourShot({ myCard, targetCard, onClose }) {
           status: 'pending',
           card_a_snapshot: isLo ? myCard : targetCard,
           card_b_snapshot: isLo ? targetCard : myCard,
-        },
-        { onConflict: 'card_a,card_b', ignoreDuplicates: false }
+        }
       )
+      if(saveError)throw saveError
       setDone(true)
+    } catch {
+      setIcebreaker('Could not save this introduction. Try again.'); setDone(false)
     } finally {
       setFiring(false)
     }
